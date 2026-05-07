@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fruta Sprint</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game-wrapper">
+    <header class="hud">
+      <h1>Fruta Sprint</h1>
+      <div class="hud-info">
+        <p><span>P1:</span> <strong id="score1">0</strong></p>
+        <p><span>P2:</span> <strong id="score2">0</strong></p>
+        <p><span>Total:</span> <strong id="score">0</strong></p>
+        <p><span>Nível:</span> <strong id="level">1</strong></p>
+        <p><span>Tempo:</span> <strong id="time">60</strong>s</p>
+        <p><span>P1 Velocidade:</span> <strong id="p1Speed">OFF</strong></p>
+        <p><span>P2 Velocidade:</span> <strong id="p2Speed">OFF</strong></p>
+        <p><span>P1 Escudo:</span> <strong id="p1Shield">0</strong></p>
+        <p><span>P2 Escudo:</span> <strong id="p2Shield">0</strong></p>
+      </div>
+      <div class="hud-actions">
+        <button id="restartBtn" type="button">Reiniciar</button>
+        <button id="changeModeBtn" type="button">Trocar modo</button>
+      </div>
+    </header>
+
+    <section id="gameArea" class="game-area" aria-label="Área do jogo 2D">
+      <div id="modeOverlay" class="mode-overlay">
+        <h2>Escolha o modo de jogo</h2>
+        <div class="mode-actions">
+          <button id="onePlayerBtn" type="button">1 Jogador</button>
+          <button id="twoPlayersBtn" type="button">2 Jogadores</button>
+        </div>
+      </div>
+      <div id="player" class="player player-one" aria-label="Personagem principal"></div>
+      <div id="player2" class="player player-two" aria-label="Segundo jogador"></div>
+    </section>
+
+    <p class="instructions">
+      Jogador 1 (Lumi): W, A, S, D. Jogador 2: setas do teclado.
+      Frutas especiais: azul = velocidade, verde = +tempo, roxa = escudo. Evite os obstáculos roxos.
+      Pressione espaço para reiniciar rápido.
+    </p>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -15,6 +15,44 @@ const p1ShieldEl = document.getElementById("p1Shield");
 const p2ShieldEl = document.getElementById("p2Shield");
 const restartBtn = document.getElementById("restartBtn");
 const changeModeBtn = document.getElementById("changeModeBtn");
+const gameWrapperEl = document.querySelector(".game-wrapper");
+
+const config = {
+  difficulty: "normal",
+  mapSize: "medium",
+  gameMode: "normal",
+  mapTheme: "field",
+  uiTheme: "light",
+  skinP1: "player1",
+  skinP2: "player2",
+};
+
+const SKIN_MAP = {
+  "player1": "url('./assets/player1.png')",
+  "player2": "url('./assets/player2.png')",
+  "goku": "url('./assets/goku.png')",
+  "run-l": "url('./assets/run-l.png')",
+  "run-m": "url('./assets/run-m.png')",
+  "goku-ssj": "url('./assets/goku-ssj.svg')",
+  "goku-ssj-fly": "url('./assets/goku-ssj-fly.svg')",
+  "sprite3-run": "url('./assets/sprite3-run.svg')",
+  "goku-base": "url('./goku.sprite/Base Goku (Yadrat Armor).png')",
+  "goku-flying": "url('./goku.sprite/Flying foward Goku (Yadrat Armor).svg')",
+  "goku-ssj-flying": "url('./goku.sprite/Flying foward Goku SSJ (Yadrat Armor).svg')",
+  "goku-ssj-armor": "url('./goku.sprite/Goku SSJ (Yadrat Armor).svg')",
+};
+
+function applySkins() {
+  const bg1 = SKIN_MAP[config.skinP1] || SKIN_MAP.player1;
+  const bg2 = SKIN_MAP[config.skinP2] || SKIN_MAP.player2;
+  player1El.style.backgroundImage = bg1;
+  player2El.style.backgroundImage = bg2;
+}
+
+const joystickLeft = document.getElementById("joystickLeft");
+const joystickRight = document.getElementById("joystickRight");
+const knobLeft = document.getElementById("joystickKnobLeft");
+const knobRight = document.getElementById("joystickKnobRight");
 
 const GAME_DURATION = 60;
 const MAX_TIME = 180;
@@ -23,11 +61,15 @@ const BASE_PLAYER_SPEED = 5;
 const BASE_OBSTACLE_SPEED = 1.5;
 const BASE_FRUIT_COUNT = 4;
 const SHIELD_BLOCK_COOLDOWN_MS = 900;
+const RESPAWN_DELAY = 5000;
 
-const player1 = { x: 40, y: 40, vx: 0, vy: 0, w: 56, h: 88 };
-const player2 = { x: 120, y: 120, vx: 0, vy: 0, w: 66, h: 88 };
-const player1State = { speedUntil: 0, shield: 0, hitCooldownUntil: 0 };
-const player2State = { speedUntil: 0, shield: 0, hitCooldownUntil: 0 };
+const respawnP1El = document.getElementById("respawnP1");
+const respawnP2El = document.getElementById("respawnP2");
+
+const player1 = { x: 40, y: 40, vx: 0, vy: 0, w: 50, h: 78, touchX: 0, touchY: 0 };
+const player2 = { x: 120, y: 120, vx: 0, vy: 0, w: 58, h: 78, touchX: 0, touchY: 0 };
+const player1State = { speedUntil: 0, shield: 0, hitCooldownUntil: 0, deadUntil: 0 };
+const player2State = { speedUntil: 0, shield: 0, hitCooldownUntil: 0, deadUntil: 0 };
 const keys = {};
 
 let obstacles = [];
@@ -53,6 +95,48 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function applyMapSize() {
+  gameWrapperEl.classList.remove("map-xs", "map-small", "map-medium", "map-large", "map-xl");
+  gameArea.classList.remove("map-xs", "map-small", "map-medium", "map-large", "map-xl");
+  if (config.mapSize !== "medium") {
+    gameWrapperEl.classList.add(`map-${config.mapSize}`);
+    gameArea.classList.add(`map-${config.mapSize}`);
+  }
+}
+
+function applyMapTheme() {
+  gameArea.classList.remove("theme-field", "theme-desert", "theme-ice", "theme-volcano", "theme-forest", "theme-space");
+  gameArea.classList.add(`theme-${config.mapTheme}`);
+}
+
+function applyUiTheme() {
+  if (config.uiTheme === "dark") {
+    document.body.classList.add("dark");
+  } else {
+    document.body.classList.remove("dark");
+  }
+}
+
+function isDead(playerState) {
+  return Date.now() < playerState.deadUntil;
+}
+
+function getRespawnTime(playerState) {
+  if (playerState.deadUntil <= 0) return 0;
+  return Math.max(0, Math.ceil((playerState.deadUntil - Date.now()) / 1000));
+}
+
+function respawnPlayer(playerNumber) {
+  const player = playerNumber === 1 ? player1 : player2;
+  const state = playerNumber === 1 ? player1State : player2State;
+  state.deadUntil = 0;
+  state.hitCooldownUntil = Date.now() + 1000;
+  player.x = 40 + (playerNumber === 2 ? 80 : 0);
+  player.y = 40;
+  player.vx = 0;
+  player.vy = 0;
+}
+
 function hasSpeedBoost(playerState) {
   return Date.now() < playerState.speedUntil;
 }
@@ -66,36 +150,76 @@ function updatePlayerVelocity() {
   const speed1 = getPlayerSpeed(player1State);
   const speed2 = getPlayerSpeed(player2State);
 
-  player1.vx = 0;
-  player1.vy = 0;
-  player2.vx = 0;
-  player2.vy = 0;
+  const hasTouch1 = player1.touchX !== 0 || player1.touchY !== 0;
+  const hasTouch2 = player2.touchX !== 0 || player2.touchY !== 0;
 
-  if (keys.a) player1.vx = -speed1;
-  if (keys.d) player1.vx = speed1;
-  if (keys.w) player1.vy = -speed1;
-  if (keys.s) player1.vy = speed1;
+  if (!isDead(player1State)) {
+    if (hasTouch1) {
+      const mag = Math.hypot(player1.touchX, player1.touchY);
+      const normX = player1.touchX / mag;
+      const normY = player1.touchY / mag;
+      player1.vx = normX * speed1;
+      player1.vy = normY * speed1;
+    } else {
+      player1.vx = 0;
+      player1.vy = 0;
+      if (keys.a) player1.vx = -speed1;
+      if (keys.d) player1.vx = speed1;
+      if (keys.w) player1.vy = -speed1;
+      if (keys.s) player1.vy = speed1;
+    }
+  }
 
-  if (keys.ArrowLeft) player2.vx = -speed2;
-  if (keys.ArrowRight) player2.vx = speed2;
-  if (keys.ArrowUp) player2.vy = -speed2;
-  if (keys.ArrowDown) player2.vy = speed2;
+  if (playerMode === 2 && !isDead(player2State)) {
+    if (hasTouch2) {
+      const mag = Math.hypot(player2.touchX, player2.touchY);
+      const normX = player2.touchX / mag;
+      const normY = player2.touchY / mag;
+      player2.vx = normX * speed2;
+      player2.vy = normY * speed2;
+    } else {
+      player2.vx = 0;
+      player2.vy = 0;
+      if (keys.ArrowLeft) player2.vx = -speed2;
+      if (keys.ArrowRight) player2.vx = speed2;
+      if (keys.ArrowUp) player2.vy = -speed2;
+      if (keys.ArrowDown) player2.vy = speed2;
+    }
+  }
 }
 
 function renderPlayers() {
-  player1El.style.left = `${player1.x}px`;
-  player1El.style.top = `${player1.y}px`;
-  if (playerMode === 2) {
-    player2El.style.left = `${player2.x}px`;
-    player2El.style.top = `${player2.y}px`;
+  const p1Dead = isDead(player1State);
+  const p2Dead = isDead(player2State);
+
+  player1El.classList.toggle("hidden", p1Dead);
+  if (!p1Dead) {
+    player1El.style.left = `${player1.x}px`;
+    player1El.style.top = `${player1.y}px`;
   }
-  player1El.classList.toggle("speed-active", hasSpeedBoost(player1State));
-  player2El.classList.toggle("speed-active", playerMode === 2 && hasSpeedBoost(player2State));
-  player1El.classList.toggle("shield-active", player1State.shield > 0);
-  player2El.classList.toggle("shield-active", playerMode === 2 && player2State.shield > 0);
+  if (playerMode === 2) {
+    player2El.classList.toggle("hidden", p2Dead);
+    if (!p2Dead) {
+      player2El.style.left = `${player2.x}px`;
+      player2El.style.top = `${player2.y}px`;
+    }
+  }
+  player1El.classList.toggle("speed-active", !p1Dead && hasSpeedBoost(player1State));
+  player2El.classList.toggle("speed-active", playerMode === 2 && !p2Dead && hasSpeedBoost(player2State));
+  player1El.classList.toggle("shield-active", !p1Dead && player1State.shield > 0);
+  player2El.classList.toggle("shield-active", playerMode === 2 && !p2Dead && player2State.shield > 0);
+  applySkins();
 }
 
 function chooseFruitType() {
+  if (config.gameMode === "specialFruits") {
+    const r = Math.random();
+    if (r < 0.25) return { type: "rare", points: 25, size: 24 };
+    if (r < 0.48) return { type: "speed", points: 12, size: 24, ability: "speed" };
+    if (r < 0.7) return { type: "time", points: 8, size: 24, ability: "time" };
+    return { type: "shield", points: 8, size: 24, ability: "shield" };
+  }
+
   const random = Math.random();
   if (random < 0.5) return { type: "common", points: 10, size: 28 };
   if (random < 0.7) return { type: "rare", points: 25, size: 24 };
@@ -135,7 +259,10 @@ function clearFruits() {
 }
 
 function ensureFruitCount() {
-  const targetCount = Math.min(BASE_FRUIT_COUNT + Math.floor(level / 2), 9);
+  let base = BASE_FRUIT_COUNT;
+  if (config.difficulty === "easy") base += 2;
+  if (config.difficulty === "hard") base = Math.max(2, base - 1);
+  const targetCount = Math.min(base + Math.floor(level / 2), 9);
   while (fruits.length < targetCount) createFruit();
 }
 
@@ -173,21 +300,43 @@ function setupObstacles() {
   obstacles = [];
 
   const areaRect = gameArea.getBoundingClientRect();
-  const obstacleCount = Math.min(1 + Math.floor(level / 2), 6);
+
+  let obstacleCount = Math.min(1 + Math.floor(level / 2), 6);
+
+  if (config.difficulty === "easy") obstacleCount = Math.max(1, Math.floor(obstacleCount * 0.6));
+  if (config.difficulty === "hard") obstacleCount = Math.min(10, Math.floor(obstacleCount * 1.4));
+
+  if (config.gameMode === "hardMode") obstacleCount = Math.min(12, Math.floor(obstacleCount * 1.6));
+  if (config.gameMode === "impossibleMode") obstacleCount = Math.min(14, Math.floor(obstacleCount * 2.5));
+
+  let speedMultiplier = 1;
+  if (config.difficulty === "easy") speedMultiplier *= 0.7;
+  if (config.difficulty === "hard") speedMultiplier *= 1.3;
+  if (config.gameMode === "impossibleMode") speedMultiplier *= 2.0;
+
+  const safeZones = [
+    { x: 40, y: 40, r: 80 },
+    { x: 120, y: 120, r: 80 },
+  ];
 
   for (let i = 0; i < obstacleCount; i += 1) {
     const obstacle = document.createElement("div");
     obstacle.className = "obstacle";
 
-    const x = Math.random() * (areaRect.width - 34);
-    const y = Math.random() * (areaRect.height - 34);
+    let x, y, safe;
+    do {
+      x = Math.random() * (areaRect.width - 34);
+      y = Math.random() * (areaRect.height - 34);
+      safe = safeZones.every((z) => Math.hypot(x - z.x, y - z.y) > z.r);
+    } while (!safe);
+
     obstacle.style.left = `${x}px`;
     obstacle.style.top = `${y}px`;
     gameArea.appendChild(obstacle);
 
     const directionX = Math.random() > 0.5 ? 1 : -1;
     const directionY = Math.random() > 0.5 ? 1 : -1;
-    const speedFactor = BASE_OBSTACLE_SPEED + level * 0.22;
+    const speedFactor = (BASE_OBSTACLE_SPEED + level * 0.22) * speedMultiplier;
 
     obstacles.push({
       el: obstacle,
@@ -290,6 +439,17 @@ function clearEndMessage() {
   if (existingMessage) existingMessage.remove();
 }
 
+function updateRespawnDisplay() {
+  const p1Time = getRespawnTime(player1State);
+  const p2Time = getRespawnTime(player2State);
+
+  respawnP1El.classList.toggle("hidden", p1Time <= 0 || playerMode === 1);
+  if (p1Time > 0) respawnP1El.textContent = `P1 revive em ${p1Time}s`;
+
+  respawnP2El.classList.toggle("hidden", p2Time <= 0);
+  if (p2Time > 0) respawnP2El.textContent = `P2 revive em ${p2Time}s`;
+}
+
 function gameLoop() {
   if (gameOver) return;
 
@@ -300,9 +460,12 @@ function gameLoop() {
   const maxY2 = areaRect.height - player2.h;
 
   updatePlayerVelocity();
-  player1.x = clamp(player1.x + player1.vx, 0, maxX1);
-  player1.y = clamp(player1.y + player1.vy, 0, maxY1);
-  if (playerMode === 2) {
+
+  if (!isDead(player1State)) {
+    player1.x = clamp(player1.x + player1.vx, 0, maxX1);
+    player1.y = clamp(player1.y + player1.vy, 0, maxY1);
+  }
+  if (playerMode === 2 && !isDead(player2State)) {
     player2.x = clamp(player2.x + player2.vx, 0, maxX2);
     player2.y = clamp(player2.y + player2.vy, 0, maxY2);
   }
@@ -312,8 +475,8 @@ function gameLoop() {
 
   for (let i = fruits.length - 1; i >= 0; i -= 1) {
     const target = fruits[i];
-    const p1Hit = hasCollision(player1, target);
-    const p2Hit = playerMode === 2 ? hasCollision(player2, target) : false;
+    const p1Hit = !isDead(player1State) && hasCollision(player1, target);
+    const p2Hit = playerMode === 2 && !isDead(player2State) && hasCollision(player2, target);
     if (!p1Hit && !p2Hit) continue;
 
     const scorer = p1Hit ? 1 : 2;
@@ -327,15 +490,31 @@ function gameLoop() {
   ensureFruitCount();
   renderPowerHud();
 
-  if (collidedWithObstacle(player1) && onObstacleCollision(player1State)) {
-    endGame();
-    return;
+  if (!isDead(player1State) && collidedWithObstacle(player1) && onObstacleCollision(player1State)) {
+    if (playerMode === 1) {
+      endGame();
+      return;
+    }
+    player1State.deadUntil = Date.now() + RESPAWN_DELAY;
+    player1.vx = 0;
+    player1.vy = 0;
   }
-  if (playerMode === 2 && collidedWithObstacle(player2) && onObstacleCollision(player2State)) {
+
+  if (playerMode === 2 && !isDead(player2State) && collidedWithObstacle(player2) && onObstacleCollision(player2State)) {
+    player2State.deadUntil = Date.now() + RESPAWN_DELAY;
+    player2.vx = 0;
+    player2.vy = 0;
+  }
+
+  if (playerMode === 2 && isDead(player1State) && isDead(player2State)) {
     endGame();
     return;
   }
 
+  if (isDead(player1State) && Date.now() >= player1State.deadUntil) respawnPlayer(1);
+  if (playerMode === 2 && isDead(player2State) && Date.now() >= player2State.deadUntil) respawnPlayer(2);
+
+  updateRespawnDisplay();
   animationId = requestAnimationFrame(gameLoop);
 }
 
@@ -379,6 +558,12 @@ function resetGame() {
   player2State.shield = 0;
   player1State.hitCooldownUntil = 0;
   player2State.hitCooldownUntil = 0;
+  player1State.deadUntil = 0;
+  player2State.deadUntil = 0;
+  respawnP1El.classList.add("hidden");
+  respawnP2El.classList.add("hidden");
+  resetJoystick("left", player1, knobLeft);
+  resetJoystick("right", player2, knobRight);
 
   refreshScoreHud();
   levelEl.textContent = level;
@@ -398,6 +583,10 @@ function startGameWithMode(mode) {
   playerMode = mode;
   gameStarted = true;
   modeOverlayEl.classList.add("hidden");
+  applyMapSize();
+  applyMapTheme();
+  applyUiTheme();
+  updateJoystickVisibility();
   resetGame();
 }
 
@@ -414,8 +603,17 @@ function backToModeSelection() {
   keys.ArrowDown = false;
   keys.ArrowLeft = false;
   keys.ArrowRight = false;
+  resetJoystick("left", player1, knobLeft);
+  resetJoystick("right", player2, knobRight);
   clearEndMessage();
+  respawnP1El.classList.add("hidden");
+  respawnP2El.classList.add("hidden");
+  player1State.deadUntil = 0;
+  player2State.deadUntil = 0;
+  player1El.classList.remove("hidden");
+  player2El.classList.remove("hidden");
   modeOverlayEl.classList.remove("hidden");
+  updateJoystickVisibility();
 }
 
 window.addEventListener("keydown", (event) => {
@@ -451,6 +649,120 @@ changeModeBtn.addEventListener("click", backToModeSelection);
 onePlayerBtn.addEventListener("click", () => startGameWithMode(1));
 twoPlayersBtn.addEventListener("click", () => startGameWithMode(2));
 
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+
+themeToggleBtn.addEventListener("click", () => {
+  config.uiTheme = config.uiTheme === "dark" ? "light" : "dark";
+  applyUiTheme();
+  themeToggleBtn.textContent = config.uiTheme === "dark" ? "◑" : "◐";
+});
+
+document.querySelectorAll(".menu-options button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const group = btn.closest(".menu-options").dataset.group;
+    config[group] = btn.dataset.value;
+    btn.closest(".menu-options").querySelectorAll("button").forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+  });
+});
+
 renderPowerHud();
 refreshScoreHud();
 player2El.classList.add("hidden");
+
+const JOYSTICK_RADIUS = 30;
+const joystickState = { left: { active: false, touchId: -1 }, right: { active: false, touchId: -1 } };
+
+function getJoystickCenter(el) {
+  const rect = el.getBoundingClientRect();
+  return { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 };
+}
+
+function handleJoystickStart(touch, side, playerObj, knobEl, joystickEl) {
+  const state = joystickState[side];
+  state.active = true;
+  state.touchId = touch.identifier;
+  const { cx, cy } = getJoystickCenter(joystickEl);
+  updateJoystick(touch, cx, cy, playerObj, knobEl);
+}
+
+function handleJoystickMove(touch, side, playerObj, knobEl, joystickEl) {
+  const state = joystickState[side];
+  if (!state.active || touch.identifier !== state.touchId) return;
+  const { cx, cy } = getJoystickCenter(joystickEl);
+  updateJoystick(touch, cx, cy, playerObj, knobEl);
+}
+
+function handleJoystickEnd(touch, side, playerObj, knobEl) {
+  const state = joystickState[side];
+  if (!state.active || touch.identifier !== state.touchId) return;
+  state.active = false;
+  state.touchId = -1;
+  playerObj.touchX = 0;
+  playerObj.touchY = 0;
+  knobEl.style.transform = "translate(-50%, -50%)";
+  updatePlayerVelocity();
+}
+
+function resetJoystick(side, playerObj, knobEl) {
+  const state = joystickState[side];
+  state.active = false;
+  state.touchId = -1;
+  playerObj.touchX = 0;
+  playerObj.touchY = 0;
+  knobEl.style.transform = "translate(-50%, -50%)";
+}
+
+function updateJoystick(touch, cx, cy, playerObj, knobEl) {
+  let dx = touch.clientX - cx;
+  let dy = touch.clientY - cy;
+  const dist = Math.hypot(dx, dy);
+  const clamped = Math.min(dist, JOYSTICK_RADIUS);
+  const angle = Math.atan2(dy, dx);
+  const limitedX = Math.cos(angle) * clamped;
+  const limitedY = Math.sin(angle) * clamped;
+
+  knobEl.style.transform = `translate(calc(-50% + ${limitedX}px), calc(-50% + ${limitedY}px))`;
+
+  const intensity = dist > 0 ? clamped / JOYSTICK_RADIUS : 0;
+  playerObj.touchX = intensity * Math.cos(angle);
+  playerObj.touchY = intensity * Math.sin(angle);
+  updatePlayerVelocity();
+}
+
+joystickLeft.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  const touch = e.changedTouches[0];
+  handleJoystickStart(touch, "left", player1, knobLeft, joystickLeft);
+}, { passive: false });
+
+joystickRight.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  const touch = e.changedTouches[0];
+  handleJoystickStart(touch, "right", player2, knobRight, joystickRight);
+}, { passive: false });
+
+document.addEventListener("touchmove", (e) => {
+  for (const touch of e.changedTouches) {
+    handleJoystickMove(touch, "left", player1, knobLeft, joystickLeft);
+    handleJoystickMove(touch, "right", player2, knobRight, joystickRight);
+  }
+}, { passive: false });
+
+document.addEventListener("touchend", (e) => {
+  for (const touch of e.changedTouches) {
+    handleJoystickEnd(touch, "left", player1, knobLeft);
+    handleJoystickEnd(touch, "right", player2, knobRight);
+  }
+});
+
+document.addEventListener("touchcancel", (e) => {
+  for (const touch of e.changedTouches) {
+    handleJoystickEnd(touch, "left", player1, knobLeft);
+    handleJoystickEnd(touch, "right", player2, knobRight);
+  }
+});
+
+function updateJoystickVisibility() {
+  joystickRight.classList.toggle("hidden", playerMode === 1);
+}

@@ -11,39 +11,144 @@
     <header class="hud">
       <h1>Fruta Sprint</h1>
       <div class="hud-info">
-        <p><span>P1:</span> <strong id="score1">0</strong></p>
-        <p><span>P2:</span> <strong id="score2">0</strong></p>
-        <p><span>Total:</span> <strong id="score">0</strong></p>
-        <p><span>Nível:</span> <strong id="level">1</strong></p>
-        <p><span>Tempo:</span> <strong id="time">60</strong>s</p>
-        <p><span>P1 Velocidade:</span> <strong id="p1Speed">OFF</strong></p>
-        <p><span>P2 Velocidade:</span> <strong id="p2Speed">OFF</strong></p>
-        <p><span>P1 Escudo:</span> <strong id="p1Shield">0</strong></p>
-        <p><span>P2 Escudo:</span> <strong id="p2Shield">0</strong></p>
+        <div class="hud-scores">
+          <span class="hud-score p1"><strong id="score1">0</strong></span>
+          <span class="hud-score total"><strong id="score">0</strong></span>
+          <span id="p2scoreWrap" class="hud-score p2"><strong id="score2">0</strong></span>
+        </div>
+        <span class="hud-divider"></span>
+        <span class="hud-stat">Nv <strong id="level">1</strong></span>
+        <span class="hud-divider"></span>
+        <span class="hud-stat time"><strong id="time">60</strong><span class="unit">s</span></span>
+        <span class="hud-divider"></span>
+        <span class="hud-powers">
+          <span class="pwr speed"><strong id="p1Speed">OFF</strong></span>
+          <span class="pwr shield"><strong id="p1Shield">0</strong></span>
+          <span id="p2speedWrap" class="pwr speed"><strong id="p2Speed">OFF</strong></span>
+          <span id="p2shieldWrap" class="pwr shield"><strong id="p2Shield">0</strong></span>
+        </span>
       </div>
       <div class="hud-actions">
-        <button id="restartBtn" type="button">Reiniciar</button>
-        <button id="changeModeBtn" type="button">Trocar modo</button>
+        <button id="restartBtn" type="button">↻</button>
+        <button id="themeToggleBtn" type="button" title="Alternar tema">◐</button>
+        <button id="changeModeBtn" type="button">⚙</button>
       </div>
     </header>
 
     <section id="gameArea" class="game-area" aria-label="Área do jogo 2D">
       <div id="modeOverlay" class="mode-overlay">
-        <h2>Escolha o modo de jogo</h2>
-        <div class="mode-actions">
-          <button id="onePlayerBtn" type="button">1 Jogador</button>
-          <button id="twoPlayersBtn" type="button">2 Jogadores</button>
+        <h2>Configurações do Jogo</h2>
+
+        <div class="menu-group">
+          <h3>Dificuldade</h3>
+          <div class="menu-options" data-group="difficulty">
+            <button data-value="easy"><span class="icon-star" data-fill="1"></span> Fácil</button>
+            <button data-value="normal" class="selected"><span class="icon-star" data-fill="2"></span> Normal</button>
+            <button data-value="hard"><span class="icon-star" data-fill="3"></span> Difícil</button>
+          </div>
+        </div>
+
+        <div class="menu-group">
+          <h3>Tamanho do Mapa</h3>
+          <div class="menu-options" data-group="mapSize">
+            <button data-value="xs"><span class="map-preview" data-size="xs"></span> Extra P</button>
+            <button data-value="small"><span class="map-preview" data-size="s"></span> Pequeno</button>
+            <button data-value="medium" class="selected"><span class="map-preview" data-size="m"></span> Médio</button>
+            <button data-value="large"><span class="map-preview" data-size="l"></span> Grande</button>
+            <button data-value="xl"><span class="map-preview" data-size="xl"></span> Extra G</button>
+          </div>
+        </div>
+
+        <div class="menu-group">
+          <h3>Modo de Jogo</h3>
+          <div class="menu-options" data-group="gameMode">
+            <button data-value="normal" class="selected"><span class="icon-mode n"></span> Normal</button>
+            <button data-value="specialFruits"><span class="icon-mode s"></span> Frutas Especiais</button>
+            <button data-value="hardMode"><span class="icon-mode h"></span> Difícil</button>
+            <button data-value="impossibleMode"><span class="icon-mode i"></span> Impossível</button>
+          </div>
+        </div>
+
+        <div class="menu-group">
+          <h3>Tema do Mapa</h3>
+          <div class="menu-options" data-group="mapTheme">
+            <button data-value="field" class="selected"><span class="theme-swatch field"></span> Campo</button>
+            <button data-value="desert"><span class="theme-swatch desert"></span> Deserto</button>
+            <button data-value="ice"><span class="theme-swatch ice"></span> Gelo</button>
+            <button data-value="volcano"><span class="theme-swatch volcano"></span> Vulcão</button>
+            <button data-value="forest"><span class="theme-swatch forest"></span> Floresta</button>
+            <button data-value="space"><span class="theme-swatch space"></span> Espaço</button>
+          </div>
+        </div>
+
+
+        <div class="menu-group">
+          <h3>Skin Jogador 1</h3>
+          <div class="menu-options skin-grid" data-group="skinP1">
+            <button data-value="player1" class="selected"><img src="./assets/player1.png" alt="Lumi"><span>Lumi</span></button>
+            <button data-value="goku"><img src="./assets/goku.png" alt="Goku"><span>Goku</span></button>
+            <button data-value="goku-ssj"><img src="./assets/goku-ssj.svg" alt="Goku SSJ"><span>Goku SSJ</span></button>
+            <button data-value="run-m"><img src="./assets/run-m.png" alt="Run M"><span>Run M</span></button>
+            <button data-value="sprite3-run"><img src="./assets/sprite3-run.svg" alt="Sonic"><span>Sonic</span></button>
+          </div>
+        </div>
+
+        <div class="menu-group">
+          <h3>Skin Jogador 2</h3>
+          <div class="menu-options skin-grid" data-group="skinP2">
+            <button data-value="player2" class="selected"><img src="./assets/player2.png" alt="Eco"><span>Eco</span></button>
+            <button data-value="goku"><img src="./assets/goku.png" alt="Goku"><span>Goku</span></button>
+            <button data-value="goku-ssj"><img src="./assets/goku-ssj.svg" alt="Goku SSJ"><span>Goku SSJ</span></button>
+            <button data-value="run-m"><img src="./assets/run-m.png" alt="Run M"><span>Run M</span></button>
+            <button data-value="sprite3-run"><img src="./assets/sprite3-run.svg" alt="Sonic"><span>Sonic</span></button>
+          </div>
+        </div>
+
+        <div class="menu-group">
+          <h3>Jogadores</h3>
+          <div class="mode-actions">
+            <button id="onePlayerBtn" type="button"><span class="icon-p1"></span> 1 Jogador</button>
+            <button id="twoPlayersBtn" type="button"><span class="icon-p2"></span> 2 Jogadores</button>
+          </div>
         </div>
       </div>
       <div id="player" class="player player-one" aria-label="Personagem principal"></div>
       <div id="player2" class="player player-two" aria-label="Segundo jogador"></div>
+      <div id="respawnP1" class="respawn-timer hidden">P1 revive em 5s</div>
+      <div id="respawnP2" class="respawn-timer hidden">P2 revive em 5s</div>
     </section>
 
-    <p class="instructions">
-      Jogador 1 (Lumi): W, A, S, D. Jogador 2: setas do teclado.
-      Frutas especiais: azul = velocidade, verde = +tempo, roxa = escudo. Evite os obstáculos roxos.
-      Pressione espaço para reiniciar rápido.
-    </p>
+    <div class="touch-controls">
+      <div id="joystickLeft" class="joystick-area">
+        <div class="joystick-label">P1</div>
+        <div id="joystickKnobLeft" class="joystick-knob"></div>
+      </div>
+      <div id="joystickRight" class="joystick-area hidden">
+        <div class="joystick-label">P2</div>
+        <div id="joystickKnobRight" class="joystick-knob"></div>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <div class="instr-section">
+        <strong class="instr-title">⌨ Controles</strong>
+        <div class="instr-row"><span class="key">W A S D</span><span>Jogador 1 (Lumi)</span></div>
+        <div class="instr-row"><span class="key">↑ ← ↓ →</span><span>Jogador 2 (Eco)</span></div>
+        <div class="instr-row"><span class="key">Espaço</span><span>Reiniciar partida</span></div>
+      </div>
+      <div class="instr-section">
+        <strong class="instr-title">🍒 Frutas Especiais</strong>
+        <div class="instr-row"><span class="badge speed-b">●</span><span>Velocidade (azul)</span></div>
+        <div class="instr-row"><span class="badge time-b">●</span><span>+ Tempo (verde)</span></div>
+        <div class="instr-row"><span class="badge shield-b">●</span><span>Escudo (roxo)</span></div>
+      </div>
+      <div class="instr-section">
+        <strong class="instr-title">⚡ Modos</strong>
+        <div class="instr-row"><span class="badge mode-n">●</span><span>Frutas Especiais = apenas frutas raras</span></div>
+        <div class="instr-row"><span class="badge mode-h">●</span><span>Difícil = mais obstáculos</span></div>
+        <div class="instr-row"><span class="badge mode-i">●</span><span>Impossível = obstáculos rápidos</span></div>
+      </div>
+    </div>
   </main>
 
   <script src="script.js"></script>
